@@ -1,0 +1,10 @@
+LICENSE
+README.md
+pyproject.toml
+smart_uv/__init__.py
+smart_uv/smart_uv.py
+smart_uv_projection.egg-info/PKG-INFO
+smart_uv_projection.egg-info/SOURCES.txt
+smart_uv_projection.egg-info/dependency_links.txt
+smart_uv_projection.egg-info/requires.txt
+smart_uv_projection.egg-info/top_level.txt
