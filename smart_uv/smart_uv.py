@@ -343,7 +343,7 @@ def pack_islands(island_uvs, margin=0.0, target_aspect=1.0):
 
 
 
-def smart_uv_unwrap(vertices, faces, margin=0.01, angle_limit=1.15192, area_weight=0.0):
+def smart_uv_unwrap(vertices, faces, margin=0.01, angle_limit=1.15192, area_weight=0.0, merge_threshold=None, smoothing_iterations=80):
     import time
     """
     Python implementation of Blender's Smart UV Project.
@@ -351,9 +351,16 @@ def smart_uv_unwrap(vertices, faces, margin=0.01, angle_limit=1.15192, area_weig
     num_faces = len(faces)
     num_vertices = len(vertices)
     
+    # Auto-calculate dynamic merge threshold if not provided
+    if merge_threshold is None:
+        # Heuristic: 0.1% of faces, but at least 10 and no more than 10,000
+        merge_threshold = max(10, min(10000, num_faces // 1000))
+        print(f"[smart_uv] Dynamic merge threshold set to {merge_threshold} faces")
+
     angle_limit_cos = np.cos(angle_limit)
     angle_limit_half_cos = np.cos(angle_limit / 2.0)
     
+    # ... (Step 1 & 2 omitted for brevity, keeping existing logic) ...
     # 1. Calculate Normals and Areas
     print("[smart_uv] 1. Calculating Normals and Areas...")
     t_start = time.time()
@@ -419,9 +426,9 @@ def smart_uv_unwrap(vertices, faces, margin=0.01, angle_limit=1.15192, area_weig
     inv_D = np.where(row_sums > 0, 1.0 / row_sums, 0.0)
     W_norm = W.multiply(inv_D[:, np.newaxis])
     
-    # 80-pass smoothing:consensus between neighbors
+    # smoothing-pass iterations:consensus between neighbors
     smoothed_dots = dot_matrix_full
-    for _ in range(80):
+    for _ in range(smoothing_iterations):
          smoothed_dots = 0.1 * smoothed_dots + 0.9 * W_norm.dot(smoothed_dots) # Very heavy neighbor weight
          
     best_proj_idx = np.argmax(smoothed_dots, axis=1)
@@ -432,7 +439,7 @@ def smart_uv_unwrap(vertices, faces, margin=0.01, angle_limit=1.15192, area_weig
     # --- STEP 4c: Iterative Small Island Merging ---
     # Running multiple passes ensures that tiny islands merged into each other 
     # are re-evaluated and merged into larger ones.
-    for merge_pass in range(5):
+    for merge_pass in range(10): # Increased passes for dynamic threshold
         # Find CC
         valid_adj = (proj_idx_per_face[adj_f1] == proj_idx_per_face[adj_f2]) & (proj_idx_per_face[adj_f1] != -1)
         data_i = np.ones(np.sum(valid_adj), dtype=bool)
@@ -440,14 +447,14 @@ def smart_uv_unwrap(vertices, faces, margin=0.01, angle_limit=1.15192, area_weig
         adj_matrix_i = csr_matrix((data_i, (adj_f1_i, adj_f2_i)), shape=(num_faces, num_faces))
         n_curr, labels_curr = connected_components(csgraph=adj_matrix_i, directed=False)
         
-        # Identify small islands (< 500 faces)
+        # Identify small islands based on dynamic merge_threshold
         label_counts = np.bincount(labels_curr)
-        tiny_labels = np.where((label_counts < 500) & (label_counts > 0))[0]
+        tiny_labels = np.where((label_counts < merge_threshold) & (label_counts > 0))[0]
         
         if len(tiny_labels) == 0:
             break
             
-        print(f"[smart_uv] Merge Pass {merge_pass+1}: Vectorised merging for {len(tiny_labels)} tiny islands...")
+        print(f"[smart_uv] Merge Pass {merge_pass+1}: Merging {len(tiny_labels)} islands smaller than {merge_threshold} faces...")
         is_tiny_label = np.zeros(n_curr, dtype=bool)
         is_tiny_label[tiny_labels] = True
         face_is_tiny = is_tiny_label[labels_curr]
