@@ -1,4 +1,4 @@
-# Smart-UV-Projection (Pure Python)
+# Smart-UV-Projection
 
 A high-performance, pure Python implementation of Blender's **Smart UV Project** algorithm and the **Alpaca** (Skyline) bin-packing engine.
 
