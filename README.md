@@ -11,7 +11,7 @@ A high-performance, pure Python implementation of Blender's **Smart UV Project**
 
 ## Installation
 ```bash
-pip install Smart-UV-Projection
+pip install https://github.com/Aero-Ex/Smart-UV-Projection/releases/download/v0.1.0/smart_uv_projection-0.1.0-py3-none-any.whl
 ```
 
 ## Usage
